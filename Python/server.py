@@ -1,11 +1,10 @@
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import json
-from io import BytesIO
 import hmac
 import base64
 import hashlib
 
 SECRET = b'HUNTR_WEBHOOK_SECRET_GOES_HERE'
+HUNTR_SIGNATURE_HEADER = 'x-huntr-hmac-sha256'
 
 def verify(received_hmac_header, body):
 
@@ -25,31 +24,23 @@ def verify(received_hmac_header, body):
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
-    def do_GET(self):
+    def do_POST(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b'Hello, world!')
 
-    def do_POST(self):
         content_length = int(self.headers['Content-Length'])
         body = self.rfile.read(content_length)
-        self.send_response(200)
-        self.end_headers()
-
-        print(body)
-
-        received_hmac_header = self.headers['x-huntr-hmac-sha256']
+        received_hmac_header = self.headers[HUNTR_SIGNATURE_HEADER]
 
         if received_hmac_header is None:
-            print("Not Valid")
-            pass
-        else:
-            verified = verify(received_hmac_header.encode('utf-8'), body)
-            print("verified: ", verified)
+            return
 
-        # send response code:
-        self.send_response(200)
-        self.end_headers()
+        verified = verify(received_hmac_header.encode('utf-8'), body)
+        if (verified):
+            print("Signature Verified | Safe to continue...")
+            # Your regular webhook logic here...
+        else:
+            print("Could not verify | Signatures do not match...")
 
 httpd = HTTPServer(('localhost', 8000), SimpleHTTPRequestHandler)
 httpd.serve_forever()

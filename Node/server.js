@@ -19,16 +19,19 @@ const verify = (receivedHmacHeader, body) => {
 
 //create a server object:
 http.createServer(function (req, res) {
-  res.write('Message received'); //write a response to the client
   let body = '';
-
-  req.on('data', chunk => {
-    body += chunk.toString(); // convert Buffer to string
-  });
-
+  req.on('data', chunk => body += chunk.toString());
   req.on('end', () => {
+
     const receivedHmacHeader = req.headers['x-huntr-hmac-sha256']
     const verified = verify(receivedHmacHeader, body)
+
+    if (verified)
+      // Your regular webhook logic here...
+      console.log("Signature Verified | Safe to continue...")
+    else
+      console.log("Could not verify | Signatures do not match...")
+
     res.end('ok');
   });
 
